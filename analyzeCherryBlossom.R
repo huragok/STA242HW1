@@ -1,0 +1,96 @@
+# UC Davis STA 242 2015 Spring Assignment 1
+# Analyze the Credit Union Cherry Blossom Ten Mile Run results from 1999 to 2010.
+# Author: Wenhao Wu
+# Email: wenhaowu1989@hotmail.com
+# Date: April 6th 2015
+
+library(stringr)
+
+files <- list.files(path = "./data")
+n_files <- length(files)
+
+# The patterns of all possible fields
+# All the possible fields
+fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun", "time_net", "pace", "seed", "split", "time_five_mile", "pace_five_mile", "time_ten_km", "pace_ten_km")
+patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
+names(patterns_fieldname) = fields_all
+
+patterns_to_scan = patterns_fieldname[c(-9, -13, -15)] # The field name we are going to search for directly using regular expression, pace/pace for 5mile/pace for 10km will be determined by contexts
+
+# Function to extract one specific field name using RE
+extractField <- function(field, fieldline) {
+  pos <- regexpr(patterns_to_scan[field], fieldline)
+}
+
+# Function to get the fields name from a vecors of lines in the file
+getFields <- function(filelines) {
+  
+  # Locate the line containing the field names
+  n_line = length(filelines)
+  flag_field_line = FALSE
+  for (i_line in seq(n_line)) {
+    if (regexpr("PLACE|Place", filelines[i_line]) == 1) {
+      flag_field_line = TRUE
+      break
+    }
+  }
+  if (!flag_field_line) { # Cannot locate a field line
+    return (NULL)
+  }
+  else { # Located a field line, now extract the field names
+    fieldline_lc = tolower(filelines[i_line])
+    pos <- sapply(names(patterns_to_scan), extractField, fieldline_lc) 
+    pos <- pos[pos > 0] 
+    pos <- sort(pos) # The positions of part of fields in increasing order, extracted directly using RE
+    
+    # Now extract the position for pace/pace_five_mile/pace_10_km
+    if (!is.na(pos["time_five_mile"])) { # 5 mile time field exist, check whether the next field is pace
+      if (str_detect(substr(fieldline_lc, pos["time_five_mile"], nchar(fieldline_lc)), paste(patterns_fieldname["time_five_mile"], " *pace", sep=""))) { #
+        
+        fieldname_time_five_mile = str_extract(fieldline_lc, patterns_fieldname["time_five_mile"]) # The string of the 5 mile time field
+        pos_pace_five_mile = regexpr("pace", substr(fieldline_lc, pos["time_five_mile"] + nchar(fieldname_time_five_mile), nchar(fieldline_lc))) # The pos of the 5 mile pos field
+        pos["pace_five_mile"] = pos["time_five_mile"] + nchar(fieldname_time_five_mile) + pos_pace_five_mile - 1# Update the pos vector
+      }
+    }
+    if (!is.na(pos["time_ten_km"])) { # 10 km time field exist, check whether the next field is pace
+      if (str_detect(substr(fieldline_lc, pos["time_ten_km"], nchar(fieldline_lc)), paste(patterns_fieldname["time_ten_km"], " *pace", sep=""))) { #
+        
+        fieldname_time_ten_km = str_extract(fieldline_lc, patterns_fieldname["time_ten_km"]) # The string of the 10 km time field
+        pos_pace_ten_km = regexpr("pace", substr(fieldline_lc, pos["time_ten_km"] + nchar(fieldname_time_ten_km), nchar(fieldline_lc))) # The pos of the 10 km pos field
+        pos["pace_ten_km"] = pos["time_ten_km"] + nchar(fieldname_time_ten_km) + pos_pace_ten_km - 1# Update the pos vector
+      }
+    }
+    pos_pace_all <- gregexpr("pace", fieldline_lc)[[1]]
+    if (pos_pace_all > 0) {
+      for (pos_candidate in pos_pace_all)
+      {
+        if ((is.na(pos["pace_five_mile"]) || pos["pace_five_mile"] != pos_candidate) && (is.na(pos["pace_ten_km"]) || pos["pace_ten_km"] != pos_candidate)) {
+          break
+        }
+      }
+      pos["pace"] = pos_candidate
+    }
+    return (sort(pos))
+  }
+}
+
+
+# Function to analyze each file
+analyzeFile <- function(filename, path) {
+  if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
+    return (NULL)
+  }
+  gender = str_extract(filename, "^(men|women)")
+  year = str_extract(filename, "[:digit:]{4}$")
+  fullname = paste(path, filename, sep="")
+  filelines = readLines(fullname)
+  poss = getFields(filelines)
+  
+  #return(list(c(gender, year)))
+}
+  
+data_raw = sapply(files, analyzeFile, "./data/")
+# path = "./data/"
+# file = c("men10Mile_2009")
+# data_raw = analyzeFile(file, path)
+print(data_raw)
