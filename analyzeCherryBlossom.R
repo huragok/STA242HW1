@@ -5,6 +5,7 @@
 # Date: April 6th 2015
 
 library(stringr)
+library(stringi)
 
 files <- list.files(path = "./data")
 n_files <- length(files)
@@ -14,6 +15,15 @@ n_files <- length(files)
 fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun", "time_net", "pace", "seed", "split", "time_five_mile", "pace_five_mile", "time_ten_km", "pace_ten_km")
 patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
 names(patterns_fieldname) = fields_all
+
+pattern_time = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
+pattern_time_gun = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
+pattern_name = "([[:alpha:][:punct:] ]*)"
+
+patterns_field = c("([[:digit:]]+)", "([[:digit:]]+/[[:digit:]]+)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
+count_group = c(1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2)
+names(patterns_field) = fields_all
+names(count_group) = fields_all
 
 patterns_to_scan = patterns_fieldname[c(-9, -13, -15)] # The field name we are going to search for directly using regular expression, pace/pace for 5mile/pace for 10km will be determined by contexts
 
@@ -70,10 +80,32 @@ getFields <- function(filelines) {
       }
       pos["pace"] = pos_candidate
     }
-    return (sort(pos))
+    return (names(sort(pos)))
   }
 }
 
+# Function to generate the gsub pattern and the replace patterns according to the given field
+getFieldPatterns <- function(fieldnames) {
+  n_fields = length(fieldnames)
+  if (n_fields < 1) {
+    return (c("", ""))
+  }
+  pattern = ""
+  replace = ""
+  count_field = 1
+  #print(fieldnames)
+  for (fieldname in fieldnames){
+    pattern = paste(pattern, patterns_field[fieldname], " +", sep = "")
+    replace = paste(replace, "$", count_field, ";", sep = "")
+    #replace = paste(replace, "\\", count_field, ";", sep = "")
+    count_field = count_field + count_group[fieldname]
+  }
+  
+  pattern = substr(pattern, 1, nchar(pattern) - 2)
+  replace = substr(replace, 1, nchar(replace) - 1)
+  return (c(pattern, replace))
+
+}
 
 # Function to analyze each file
 analyzeFile <- function(filename, path) {
@@ -84,13 +116,18 @@ analyzeFile <- function(filename, path) {
   year = str_extract(filename, "[:digit:]{4}$")
   fullname = paste(path, filename, sep="")
   filelines = readLines(fullname)
-  poss = getFields(filelines)
-  
+  fieldnames = getFields(filelines)
+
+  pr = getFieldPatterns(fieldnames)
+  print(pr[1])
+  print(pr[2])
+  stri_replace_all_regex(filelines[123], pr[1], pr[2])
+  #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
 }
   
-data_raw = sapply(files, analyzeFile, "./data/")
-# path = "./data/"
-# file = c("men10Mile_2009")
-# data_raw = analyzeFile(file, path)
+#data_raw = sapply(files, analyzeFile, "./data/")
+ path = "./data/"
+ file = c("men10Mile_2005")
+ data_raw = analyzeFile(file, path)
 print(data_raw)
