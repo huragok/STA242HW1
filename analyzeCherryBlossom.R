@@ -20,8 +20,8 @@ pattern_time = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
 pattern_time_gun = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
 pattern_name = "([[:alpha:][:punct:] ]*)"
 
-patterns_field = c("([[:digit:]]+)", "([[:digit:]]+/[[:digit:]]+)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
-count_group = c(1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2)
+patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
+count_group = c(1, 2, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2)
 names(patterns_field) = fields_all
 names(count_group) = fields_all
 
