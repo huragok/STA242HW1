@@ -18,10 +18,10 @@ names(patterns_fieldname) = fields_all
 
 pattern_time = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
 pattern_time_gun = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
-pattern_name = "([[:alpha:][:punct:] ]*)"
+pattern_name = "([[:alpha:][:punct:] ]*[[:alpha:][:punct:]]*)"
 
 patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
-count_group = c(1, 2, 1, 1, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 2)
+count_group = stri_count(patterns_field , fixed = "(")
 names(patterns_field) = fields_all
 names(count_group) = fields_all
 
@@ -107,6 +107,17 @@ getFieldPatterns <- function(fieldnames) {
 
 }
 
+# Function to get the number of lines to skip and the total number of lines to read according to the pattern
+getSkipNrows <- function(filelines, pattern) {
+  skip = 0
+  for (i_row in seq(length(filelines))) {
+    if (stri_detect(filelines[i_row], regex = pattern)) {
+      break
+    }
+  }
+  skip = i_row - 1
+  
+}
 # Function to analyze each file
 analyzeFile <- function(filename, path) {
   if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
@@ -119,9 +130,14 @@ analyzeFile <- function(filename, path) {
   fieldnames = getFields(filelines)
 
   pr = getFieldPatterns(fieldnames)
-  print(pr[1])
-  print(pr[2])
-  stri_replace_all_regex(filelines[123], pr[1], pr[2])
+  
+  
+  filelines = stri_replace_all_regex(filelines[86], pr[1], pr[2])
+  
+  # locate the first line to read
+  
+  #tc <- textConnection(filelines)
+  #data <- read.table(tc, sep=";")
   #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
 }
@@ -130,4 +146,4 @@ analyzeFile <- function(filename, path) {
  path = "./data/"
  file = c("men10Mile_2005")
  data_raw = analyzeFile(file, path)
-print(data_raw)
+#print(data_raw)
