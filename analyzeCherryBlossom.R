@@ -17,11 +17,11 @@ patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "home
 names(patterns_fieldname) = fields_all
 
 pattern_time = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})?)"
-pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
+pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
 pattern_time_gun = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)?)"
 
 #pattern_name = "(([[:alpha:] ]*[[:digit:]]?[[:alpha:]*[\\.,\\-'] ]?)*[[:alpha:][:digit:]]*)"
-pattern_name = "([[:alpha:] ]*[[:digit:]]?[[:alpha:][\\.,\\-'] ]*[[:alpha:][\\.,\\-']]+)"
+pattern_name = "(([[:alpha:]\\.,\\-'&]+\\s{1,2})*[[:alpha:]\\.,\\-'&]*)" #Here we assume that the name field does not contain any number and two words are separated by 1 spaces
 
 patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
 count_group = stri_count(patterns_field , fixed = "(")
@@ -113,6 +113,28 @@ getFieldPatterns <- function(fieldnames) {
 # Function to trim leading and trailing whitespace
 trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
+# Function to clean format of the lines in the file to meet the RE. Designed based on trial and error
+cleanLines <- function(filelines) {
+  filelines = gsub("2[nN][dD]", "second", filelines) # replace "2nd" with "second"
+  filelines = gsub("3[rR][dD]", "third", filelines) # replace "2nd" with "second"
+
+  filelines = gsub("8illiam", "William", filelines) # The "8illiam" in men10Mile_2000
+  filelines = gsub("Christopher5", "Christopher", filelines) # The "Christopher5" in men10Mile_2007
+
+  filelines = gsub("\\s\\((\\w*)\\)", "", filelines)# remove aka in the middle of the name
+  filelines = gsub("\\s\\(", "", filelines)
+  filelines = gsub("\\s\\)", "", filelines)
+
+  filelines = gsub("`", "", filelines) # remove meaningless symbols (e.g."`" in "men10Mile_2001")
+  filelines = gsub("([[:digit:]]{1,2}:)(\\s|$)", "\\100\\2", filelines) # Add the missed second part of the time in "men10Mile_2001")
+  
+  filelines = gsub("\\s+([jJsS][rR])(\\s|$)", " \\1\\2", filelines) #Remove the extra space before jr and sr in "men10Mile_2002"
+  
+  filelines = gsub("[[:digit:]]{5,}\\s([[:alpha:]]+)", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
+  filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
+  filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
+}
+
 # Function to get the range of lines to containing the tables
 getBeginEnd <- function(filelines, pattern) {
   begin = 0
@@ -141,21 +163,21 @@ analyzeFile <- function(filename, path) {
   year = str_extract(filename, "[:digit:]{4}$")
   fullname = paste(path, filename, sep="")
   filelines = trim(readLines(fullname))
-  #filelines = sapply(filelines, trim)
+  filelines = cleanLines(filelines)
   #print(filelines[1])
   fieldnames = getFields(filelines)
 
   pr = getFieldPatterns(fieldnames)
   
   be = getBeginEnd(filelines, pr[1]) # locate the first line to read
-  print(be)
-  print(pr)
+  #print(be)
+  #print(pr)
   #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
   filelines = stri_replace_all_regex(filelines, pr[1], pr[2]) # Add the delimeters
-  data_part = filelines[be[1]:be[2]]
+  #data_part = filelines[be[1]:be[2]]
   #x = stri_count(data_part, fixed=';')
   #print(x[891])
-  print(data_part[1])
+  #print(data_part[1])
   tc <- textConnection(filelines[be[1]:be[2]])
   data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="")
 
@@ -165,6 +187,6 @@ analyzeFile <- function(filename, path) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("men10Mile_2002")
+ file = c("men10Mile_2008")
  data_raw = analyzeFile(file, path)
- #print(data_raw)
+ #print(data_raw[which(is.na(data_raw$age)),])
