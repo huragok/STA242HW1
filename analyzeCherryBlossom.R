@@ -16,11 +16,14 @@ fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun
 patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
 names(patterns_fieldname) = fields_all
 
-pattern_time = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
-pattern_time_gun = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
-pattern_name = "([[:alpha:][:punct:] ]*[[:alpha:][:punct:]]*)"
+pattern_time = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})?)"
+pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})"
+pattern_time_gun = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)?)"
 
-patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
+#pattern_name = "(([[:alpha:] ]*[[:digit:]]?[[:alpha:]*[\\.,\\-'] ]?)*[[:alpha:][:digit:]]*)"
+pattern_name = "([[:alpha:] ]*[[:digit:]]?[[:alpha:][\\.,\\-'] ]*[[:alpha:][\\.,\\-']]+)"
+
+patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
 count_group = stri_count(patterns_field , fixed = "(")
 names(patterns_field) = fields_all
 names(count_group) = fields_all
@@ -90,33 +93,44 @@ getFieldPatterns <- function(fieldnames) {
   if (n_fields < 1) {
     return (c("", ""))
   }
-  pattern = ""
+  pattern = "^"
   replace = ""
   count_field = 1
   #print(fieldnames)
   for (fieldname in fieldnames){
-    pattern = paste(pattern, patterns_field[fieldname], " +", sep = "")
+    pattern = paste(pattern, patterns_field[fieldname], " *", sep = "")
     replace = paste(replace, "$", count_field, ";", sep = "")
     #replace = paste(replace, "\\", count_field, ";", sep = "")
     count_field = count_field + count_group[fieldname]
   }
-  
+  pattern = paste(pattern, "$", " *", sep = "")
   pattern = substr(pattern, 1, nchar(pattern) - 2)
   replace = substr(replace, 1, nchar(replace) - 1)
   return (c(pattern, replace))
 
 }
 
-# Function to get the number of lines to skip and the total number of lines to read according to the pattern
-getSkipNrows <- function(filelines, pattern) {
-  skip = 0
+# Function to trim leading and trailing whitespace
+trim <- function (x) gsub("^\\s+|\\s+$", "", x)
+
+# Function to get the range of lines to containing the tables
+getBeginEnd <- function(filelines, pattern) {
+  begin = 0
   for (i_row in seq(length(filelines))) {
     if (stri_detect(filelines[i_row], regex = pattern)) {
       break
     }
   }
-  skip = i_row - 1
+  begin = i_row
   
+  end = length(filelines)
+  for (i_row in seq(length(filelines), 1)) {
+    if (stri_detect(filelines[i_row], regex = pattern)) {
+      break
+    }
+  }
+  end = i_row
+  return (c(begin, end))
 }
 # Function to analyze each file
 analyzeFile <- function(filename, path) {
@@ -126,24 +140,31 @@ analyzeFile <- function(filename, path) {
   gender = str_extract(filename, "^(men|women)")
   year = str_extract(filename, "[:digit:]{4}$")
   fullname = paste(path, filename, sep="")
-  filelines = readLines(fullname)
+  filelines = trim(readLines(fullname))
+  #filelines = sapply(filelines, trim)
+  #print(filelines[1])
   fieldnames = getFields(filelines)
 
   pr = getFieldPatterns(fieldnames)
   
-  
-  filelines = stri_replace_all_regex(filelines[86], pr[1], pr[2])
-  
-  # locate the first line to read
-  
-  #tc <- textConnection(filelines)
-  #data <- read.table(tc, sep=";")
+  be = getBeginEnd(filelines, pr[1]) # locate the first line to read
+  print(be)
+  print(pr)
+  #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
+  filelines = stri_replace_all_regex(filelines, pr[1], pr[2]) # Add the delimeters
+  data_part = filelines[be[1]:be[2]]
+  #x = stri_count(data_part, fixed=';')
+  #print(x[891])
+  print(data_part[1])
+  tc <- textConnection(filelines[be[1]:be[2]])
+  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="")
+
   #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
 }
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("men10Mile_2005")
+ file = c("men10Mile_2002")
  data_raw = analyzeFile(file, path)
-#print(data_raw)
+ #print(data_raw)
