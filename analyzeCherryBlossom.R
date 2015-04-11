@@ -139,9 +139,13 @@ cleanLines <- function(filelines) {
   
   filelines = gsub("[[:digit:]]{5,}\\sBerlin", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
   
-  filelines = gsub("\\s#\\s[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "women10Mile_2008"
-  filelines = gsub("\\s#?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
-  filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
+  #filelines = gsub("\\s#\\s?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "women10Mile_2008"
+  #filelines = gsub("\\s#?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
+  #filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
+ 
+  filelines = gsub("\\sSuite\\s[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
+  filelines = gsub("\\s#?\\s?[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
+  filelines = gsub("\\s[aA][pP][tT]\\.?\\s.*([A-Z]{2})\\s", "\\1", filelines)
   
   filelines = gsub("\\s[[:digit:]]+(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
   filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
@@ -222,7 +226,7 @@ analyzeFile <- function(filename, path) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("men10Mile_2010")
+ file = c("women10Mile_2010")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
  data_raw = analyzeFile(file, path)
