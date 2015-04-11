@@ -16,14 +16,17 @@ fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun
 patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
 names(patterns_fieldname) = fields_all
 
-pattern_time = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2})?)"
-pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
-pattern_time_gun = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)?)"
+pattern_time = "((\\s{0,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
+pattern_pace = "((\\s{4,5})|(1?[[:digit:]]:[[:digit:]]{2}))"
+pattern_time_net = "(((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})[#\\*]?\\s?)|(\\s{0,7}[#\\*]?\\s?))"
+pattern_time_gun = pattern_time_net 
+#pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
+#pattern_time_gun = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)?)"
 
 #pattern_name = "(([[:alpha:] ]*[[:digit:]]?[[:alpha:]*[\\.,\\-'] ]?)*[[:alpha:][:digit:]]*)"
-pattern_name = "(([[:alpha:]\\.,\\-'&]+\\s{1,2})*[[:alpha:]\\.,\\-'&]*)" #Here we assume that the name field does not contain any number and two words are separated by 1 spaces
+pattern_name = "(([[:alpha:],'&\\.\\-]+\\s{1,2})*[[:alpha:],'&\\.\\-]*)" #Here we assume that the name field does not contain any number and two words are separated by 1 spaces
 
-patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_time, "(.?)", pattern_time, pattern_time, pattern_time, pattern_time, pattern_time)
+patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_pace, "([^#]?)", pattern_time, pattern_time, pattern_pace, pattern_time, pattern_pace)
 count_group = stri_count(patterns_field , fixed = "(")
 names(patterns_field) = fields_all
 names(count_group) = fields_all
@@ -40,8 +43,10 @@ getFields <- function(filelines) {
   
   # Locate the line containing the field names
   n_line = length(filelines)
+  print(n_line)
   flag_field_line = FALSE
   for (i_line in seq(n_line)) {
+    #print(regexpr("PLACE|Place", filelines[i_line]) == 1)
     if (regexpr("PLACE|Place", filelines[i_line]) == 1) {
       flag_field_line = TRUE
       break
@@ -98,7 +103,7 @@ getFieldPatterns <- function(fieldnames) {
   count_field = 1
   #print(fieldnames)
   for (fieldname in fieldnames){
-    pattern = paste(pattern, patterns_field[fieldname], " *", sep = "")
+    pattern = paste(pattern, patterns_field[fieldname], "\\s*", sep = "")
     replace = paste(replace, "$", count_field, ";", sep = "")
     #replace = paste(replace, "\\", count_field, ";", sep = "")
     count_field = count_field + count_group[fieldname]
@@ -115,6 +120,8 @@ trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 
 # Function to clean format of the lines in the file to meet the RE. Designed based on trial and error
 cleanLines <- function(filelines) {
+
+  #filelines = gsub("Â", " ", filelines) # replace utf-8 space
   filelines = gsub("2[nN][dD]", "second", filelines) # replace "2nd" with "second"
   filelines = gsub("3[rR][dD]", "third", filelines) # replace "2nd" with "second"
 
@@ -130,9 +137,14 @@ cleanLines <- function(filelines) {
   
   filelines = gsub("\\s+([jJsS][rR])(\\s|$)", " \\1\\2", filelines) #Remove the extra space before jr and sr in "men10Mile_2002"
   
-  filelines = gsub("[[:digit:]]{5,}\\s([[:alpha:]]+)", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
+  filelines = gsub("[[:digit:]]{5,}\\sBerlin", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
   filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
+  filelines = gsub("\\s#?[[:digit:]]+\\s[A-Z]{2}\\s", "", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
+  filelines = gsub("\\s[[:digit:]]+(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
   filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
+  filelines = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", filelines) # The idiot who put his zipcode in the address field in "men10Mile_2007"
+  
+  filelines = gsub("±", "t", filelines) # Roberto Pe±a to Peta in men10Mile_2008
 }
 
 # Function to get the range of lines to containing the tables
@@ -154,6 +166,20 @@ getBeginEnd <- function(filelines, pattern) {
   end = i_row
   return (c(begin, end))
 }
+
+# Function to test the format of the file. If UTF-8 convert to ASCII
+conv2ASCII <- function(filename) {
+  fmt = system(paste("file -b \"", filename, "\"", sep = "" ), intern=TRUE)
+  print(fmt)
+  if (str_detect(fmt, "UTF-8")) {
+    x = paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "\"", sep = "")
+    print(x)
+    system(paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "_new\"", sep = ""))
+    system(paste("mv -f \"", filename, "_new\" \"", filename, "\"", sep = ""))
+  }
+}
+
+
 # Function to analyze each file
 analyzeFile <- function(filename, path) {
   if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
@@ -162,16 +188,18 @@ analyzeFile <- function(filename, path) {
   gender = str_extract(filename, "^(men|women)")
   year = str_extract(filename, "[:digit:]{4}$")
   fullname = paste(path, filename, sep="")
+  conv2ASCII(fullname) # If file is UTF-8, convert to ASCII
   filelines = trim(readLines(fullname))
-  filelines = cleanLines(filelines)
-  #print(filelines[1])
-  fieldnames = getFields(filelines)
 
+  filelines = cleanLines(filelines)
+  print(filelines[85])
+  fieldnames = getFields(filelines)
+  print(fieldnames)
   pr = getFieldPatterns(fieldnames)
   
   be = getBeginEnd(filelines, pr[1]) # locate the first line to read
   #print(be)
-  #print(pr)
+  print(pr)
   #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
   filelines = stri_replace_all_regex(filelines, pr[1], pr[2]) # Add the delimeters
   #data_part = filelines[be[1]:be[2]]
@@ -187,6 +215,10 @@ analyzeFile <- function(filename, path) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("men10Mile_2008")
+ file = c("men10Mile_2010")
+ fullname = paste(path, file, sep = "")
+ #conv2ASCII(fullname)
  data_raw = analyzeFile(file, path)
- #print(data_raw[which(is.na(data_raw$age)),])
+ print(summary(data_raw))
+ print(data_raw[which(is.na(data_raw$age)),])
+ print(data_raw[which(is.na(data_raw$number)),])
