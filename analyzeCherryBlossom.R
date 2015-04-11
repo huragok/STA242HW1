@@ -147,7 +147,7 @@ cleanLines <- function(filelines) {
   filelines = gsub("\\s#?\\s?[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
   filelines = gsub("\\s[aA][pP][tT]\\.?\\s.*([A-Z]{2})\\s", "\\1", filelines)
   
-  filelines = gsub("\\s[[:digit:]]+(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
+  filelines = gsub("\\s[[:digit:]]{3,}(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
   filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
   filelines = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", filelines) # The idiot who put his zipcode in the address field in "men10Mile_2007"
   
@@ -245,12 +245,12 @@ time2int <- function(v) {
   } else if ((length(v) == 2)) {
     return (60*v[1] + v[2])
   } else {
-    eturn (3600 * v[1] + 60*v[2] + v[3])
+    return (3600 * v[1] + 60*v[2] + v[3])
   }
 }
 
 # Function to analyze each file
-analyzeFile <- function(filename, path) {
+analyzeFile <- function(filename, path, fieldnames = NULL) {
   if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
     return (NULL)
   }
@@ -262,7 +262,13 @@ analyzeFile <- function(filename, path) {
 
   filelines = cleanLines(filelines)
   #print(filelines[85])
-  fieldnames = getFields(filelines)
+  if (is.null(fieldnames)) {
+    fieldnames = getFields(filelines)
+  }
+  if (is.null(fieldnames)) {
+    warning("Can not locate the field line. Try specifying the field names manually!")
+    return(NULL)
+  }
   #print(fieldnames)
   pr = getFieldPatterns(fieldnames)
   
@@ -276,7 +282,7 @@ analyzeFile <- function(filename, path) {
   #print(x[891])
   #print(data_part[1])
   tc <- textConnection(filelines[be[1]:be[2]])
-  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="", stringsAsFactors = FALSE)
+  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="")#, stringsAsFactors = FALSE)
 
   #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
@@ -284,11 +290,12 @@ analyzeFile <- function(filename, path) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("men10Mile_2001")
+ file = c("women10Mile_2001")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
- data_raw = analyzeFile(file, path)
- data = postProcFrame(data_raw)
- #print(summary(data_raw))
- #print(data_raw[which(is.na(data_raw$age)),])
- #print(data_raw[which(is.na(data_raw$number)),])
+ fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun")
+ data_raw = analyzeFile(file, path, fieldnames)
+ #data = postProcFrame(data_raw)
+ print(summary(data_raw))
+ print(data_raw[which(is.na(data_raw$age)),])
+ print(data_raw[which(is.na(data_raw$number)),])
