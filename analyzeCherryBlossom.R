@@ -16,7 +16,8 @@ fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun
 patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
 names(patterns_fieldname) = fields_all
 
-pattern_time = "((\\s{0,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
+pattern_time = "((\\s{5,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
+pattern_split = "((\\s{0,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
 pattern_pace = "((\\s{4,5})|(1?[[:digit:]]:[[:digit:]]{2}))"
 pattern_time_net = "(((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})[#\\*]?\\s?)|(\\s{0,7}[#\\*]?\\s?))"
 pattern_time_gun = pattern_time_net 
@@ -26,7 +27,7 @@ pattern_time_gun = pattern_time_net
 #pattern_name = "(([[:alpha:] ]*[[:digit:]]?[[:alpha:]*[\\.,\\-'] ]?)*[[:alpha:][:digit:]]*)"
 pattern_name = "(([[:alpha:],'&\\.\\-]+\\s{1,2})*[[:alpha:],'&\\.\\-]*)" #Here we assume that the name field does not contain any number and two words are separated by 1 spaces
 
-patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_pace, "([^#]?)", pattern_time, pattern_time, pattern_pace, pattern_time, pattern_pace)
+patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_pace, "([^#]?)", pattern_split, pattern_time, pattern_pace, pattern_time, pattern_pace)
 count_group = stri_count(patterns_field , fixed = "(")
 names(patterns_field) = fields_all
 names(count_group) = fields_all
@@ -212,6 +213,35 @@ postProcFrame <- function(data_frame) {
     data_frame$name <- NA
   }
   
+  # Extract the USATF OPEN guideline (OPEN) or Under USATF Age-Group (AG) guideline or no guideline (NONE)
+  #print(colnames(data_frame))
+  #print(head(data_frame$time_net))
+  field_gl = data_frame$time_net
+  #print(head(field_gl))
+  if ("time_gun" %in% colnames(data_frame)) {
+    field_gl = cbind(field_gl, data_frame$time_gun)
+  }
+  print(head(field_gl))
+  print(class(field_gl))
+  if (is.vector(field_gl)) {
+    data_frame$guideline <- sapply(field_gl, postProcGL)
+  }
+  else {
+    data_frame$guideline <- apply(field_gl, 1, postProcGL)
+  }
+  
+  # Convert the time domain into seconds
+  for (fieldname in c("time_gun", "time_net", "pace", "split", "time_five_mile", "pace_five_mile", "time_ten_km", "pace_ten_km")) {
+    if (fieldname %in% colnames(data_frame)) {
+      data_frame[,fieldname] <- sapply(data_frame[,fieldname], postProcTime)
+    }
+    else {
+      data_frame[,fieldname] <- NA
+    }
+  }
+  
+  # Fix an ambiguity during the RE parsing: in men 2008 for some one who has mile time and pace it must have 10 km time and pace 
+  
   return(data_frame)
 }
 
@@ -237,16 +267,26 @@ postProcName <- function(s) {
   return(tolower(s))
 }
 
-time2int <- function(v) {
-  if (length(v) == 0) {
-    return(NA)
-  } else if (length(v) == 1) {
-    return (v)
-  } else if ((length(v) == 2)) {
-    return (60*v[1] + v[2])
-  } else {
-    return (3600 * v[1] + 60*v[2] + v[3])
+postProcGL <- function(v_s) {
+  if (any(str_detect(v_s, "#"))) {
+    return("OPEN")
   }
+  else if (any(str_detect(v_s, "\\*"))) {
+    return("AG")
+  }
+  else {
+    return("NONE")
+  }
+}
+
+postProcTime <- function(s) {
+  if (s == "") {
+    return(NA)
+  }
+  v_s = unlist(strsplit(s, ":"))
+  v_s = as.integer(gsub("[^0-9]","",v_s))  #remove all non-numeric characters 
+  l_v = length(v_s)
+  return (sum((60 ^ seq(l_v - 1, 0)) * v_s))
 }
 
 # Function to analyze each file
@@ -282,7 +322,7 @@ analyzeFile <- function(filename, path, fieldnames = NULL) {
   #print(x[891])
   #print(data_part[1])
   tc <- textConnection(filelines[be[1]:be[2]])
-  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="")#, stringsAsFactors = FALSE)
+  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="", stringsAsFactors = FALSE)
 
   #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
@@ -290,12 +330,12 @@ analyzeFile <- function(filename, path, fieldnames = NULL) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("women10Mile_2001")
+ file = c("women10Mile_2008")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
  fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun")
- data_raw = analyzeFile(file, path, fieldnames)
- #data = postProcFrame(data_raw)
- print(summary(data_raw))
- print(data_raw[which(is.na(data_raw$age)),])
- print(data_raw[which(is.na(data_raw$number)),])
+ data_raw = analyzeFile(file, path)
+ data = postProcFrame(data_raw)
+ #print(summary(data_raw))
+ #print(data_raw[which(is.na(data_raw$age)),])
+ #print(data_raw[which(is.na(data_raw$number)),])
