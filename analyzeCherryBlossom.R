@@ -129,8 +129,8 @@ cleanLines <- function(filelines) {
   filelines = gsub("Christopher5", "Christopher", filelines) # The "Christopher5" in men10Mile_2007
 
   filelines = gsub("\\s\\((\\w*)\\)", "", filelines)# remove aka in the middle of the name
-  filelines = gsub("\\s\\(", "", filelines)
-  filelines = gsub("\\s\\)", "", filelines)
+  filelines = gsub("\\(", "", filelines)
+  filelines = gsub("\\)", "", filelines)
 
   filelines = gsub("`", "", filelines) # remove meaningless symbols (e.g."`" in "men10Mile_2001")
   filelines = gsub("([[:digit:]]{1,2}:)(\\s|$)", "\\100\\2", filelines) # Add the missed second part of the time in "men10Mile_2001")
@@ -138,13 +138,20 @@ cleanLines <- function(filelines) {
   filelines = gsub("\\s+([jJsS][rR])(\\s|$)", " \\1\\2", filelines) #Remove the extra space before jr and sr in "men10Mile_2002"
   
   filelines = gsub("[[:digit:]]{5,}\\sBerlin", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
+  
+  filelines = gsub("\\s#\\s[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "women10Mile_2008"
+  filelines = gsub("\\s#?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
   filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
-  filelines = gsub("\\s#?[[:digit:]]+\\s[A-Z]{2}\\s", "", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
+  
   filelines = gsub("\\s[[:digit:]]+(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
   filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
   filelines = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", filelines) # The idiot who put his zipcode in the address field in "men10Mile_2007"
   
   filelines = gsub("±", "t", filelines) # Roberto Pe±a to Peta in men10Mile_2008
+  
+  filelines = gsub("[;+]", "", filelines) # Remove all ";" and "+" in order not to get confused with our added delimeter
+  filelines = gsub("X{2,}", "  ", filelines) # The xxxxx and xx in women10Mile_2002 replaced with NA
+  filelines = gsub("_", "-", filelines) # Replace the underscore in women10Mile_2010
 }
 
 # Function to get the range of lines to containing the tables
@@ -170,10 +177,10 @@ getBeginEnd <- function(filelines, pattern) {
 # Function to test the format of the file. If UTF-8 convert to ASCII
 conv2ASCII <- function(filename) {
   fmt = system(paste("file -b \"", filename, "\"", sep = "" ), intern=TRUE)
-  print(fmt)
+  #print(fmt)
   if (str_detect(fmt, "UTF-8")) {
-    x = paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "\"", sep = "")
-    print(x)
+    #x = paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "\"", sep = "")
+    #print(x)
     system(paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "_new\"", sep = ""))
     system(paste("mv -f \"", filename, "_new\" \"", filename, "\"", sep = ""))
   }
@@ -192,14 +199,14 @@ analyzeFile <- function(filename, path) {
   filelines = trim(readLines(fullname))
 
   filelines = cleanLines(filelines)
-  print(filelines[85])
+  #print(filelines[85])
   fieldnames = getFields(filelines)
-  print(fieldnames)
+  #print(fieldnames)
   pr = getFieldPatterns(fieldnames)
   
   be = getBeginEnd(filelines, pr[1]) # locate the first line to read
   #print(be)
-  print(pr)
+  #print(pr)
   #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
   filelines = stri_replace_all_regex(filelines, pr[1], pr[2]) # Add the delimeters
   #data_part = filelines[be[1]:be[2]]
