@@ -89,31 +89,19 @@ getFields <- function(filelines) {
       }
       pos["pace"] = pos_candidate
     }
-    return (names(sort(pos)))
+    
+    return(sort(pos))
   }
 }
 
 # Function to generate the gsub pattern and the replace patterns according to the given field
 getFieldPatterns <- function(fieldnames) {
-  n_fields = length(fieldnames)
-  if (n_fields < 1) {
-    return (c("", ""))
-  }
-  pattern = "^"
-  replace = ""
-  count_field = 1
-  #print(fieldnames)
+  pattern = "^\\s*"
   for (fieldname in fieldnames){
     pattern = paste(pattern, patterns_field[fieldname], "\\s*", sep = "")
-    replace = paste(replace, "$", count_field, ";", sep = "")
-    #replace = paste(replace, "\\", count_field, ";", sep = "")
-    count_field = count_field + count_group[fieldname]
   }
-  pattern = paste(pattern, "$", " *", sep = "")
-  pattern = substr(pattern, 1, nchar(pattern) - 2)
-  replace = substr(replace, 1, nchar(replace) - 1)
-  return (c(pattern, replace))
-
+  pattern = paste(pattern, "$", sep = "")
+  return (pattern)
 }
 
 # Function to trim leading and trailing whitespace
@@ -123,40 +111,41 @@ trim <- function (x) gsub("^\\s+|\\s+$", "", x)
 cleanLines <- function(filelines) {
 
   #filelines = gsub("Â", " ", filelines) # replace utf-8 space
-  filelines = gsub("2[nN][dD]", "second", filelines) # replace "2nd" with "second"
-  filelines = gsub("3[rR][dD]", "third", filelines) # replace "2nd" with "second"
+  #filelines = gsub("2[nN][dD]", "second", filelines) # replace "2nd" with "second"
+  #filelines = gsub("3[rR][dD]", "third", filelines) # replace "2nd" with "second"
 
-  filelines = gsub("8illiam", "William", filelines) # The "8illiam" in men10Mile_2000
-  filelines = gsub("Christopher5", "Christopher", filelines) # The "Christopher5" in men10Mile_2007
+  #filelines = gsub("8illiam", "William", filelines) # The "8illiam" in men10Mile_2000
+  #filelines = gsub("Christopher5", "Christopher", filelines) # The "Christopher5" in men10Mile_2007
 
-  filelines = gsub("\\s\\((\\w*)\\)", "", filelines)# remove aka in the middle of the name
-  filelines = gsub("\\(", "", filelines)
-  filelines = gsub("\\)", "", filelines)
+  #filelines = gsub("\\s\\((\\w*)\\)", "", filelines)# remove aka in the middle of the name
+  #filelines = gsub("\\(", "", filelines)
+  #filelines = gsub("\\)", "", filelines)
 
-  filelines = gsub("`", "", filelines) # remove meaningless symbols (e.g."`" in "men10Mile_2001")
+  #filelines = gsub("`", "", filelines) # remove meaningless symbols (e.g."`" in "men10Mile_2001")
   filelines = gsub("([[:digit:]]{1,2}:)(\\s|$)", "\\100\\2", filelines) # Add the missed second part of the time in "men10Mile_2001")
   
-  filelines = gsub("\\s+([jJsS][rR])(\\s|$)", " \\1\\2", filelines) #Remove the extra space before jr and sr in "men10Mile_2002"
+  #filelines = gsub("\\s+([jJsS][rR])(\\s|$)", " \\1\\2", filelines) #Remove the extra space before jr and sr in "men10Mile_2002"
   
-  filelines = gsub("[[:digit:]]{5,}\\sBerlin", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
+  #filelines = gsub("[[:digit:]]{5,}\\sBerlin", " \\1", filelines) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
   
   #filelines = gsub("\\s#\\s?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "women10Mile_2008"
   #filelines = gsub("\\s#?[[:digit:]]+(\\s[A-Z]{2}\\s)", "\\1", filelines)  # The idiots who put their apt number (without "apt") in the address field in "men10Mile_2008"
   #filelines = gsub("([aA][pP][tT]\\.?\\s?#?[[:digit:]]+\\w*)\\s", "", filelines) # The idiots who put their apt number in the address field in "men10Mile_2007"
  
-  filelines = gsub("\\sSuite\\s[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
-  filelines = gsub("\\s#?\\s?[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
-  filelines = gsub("\\s[aA][pP][tT]\\.?\\s.*([A-Z]{2})\\s", "\\1", filelines)
+  #filelines = gsub("\\sSuite\\s[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
+  #filelines = gsub("\\s#?\\s?[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", filelines)
+  #filelines = gsub("\\s[aA][pP][tT]\\.?\\s.*([A-Z]{2})\\s", "\\1", filelines)
   
-  filelines = gsub("\\s[[:digit:]]{3,}(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
-  filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
-  filelines = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", filelines) # The idiot who put his zipcode in the address field in "men10Mile_2007"
+  #filelines = gsub("\\s[[:digit:]]{3,}(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", filelines) # The idiots who put their street address in "men10Mile_2007"
+  #filelines = gsub("\\s[[:alpha:]]+@[[:alpha:]]+\\s", "", filelines) # The idiots who put their email address in the address field in "men10Mile_2007"
+  #filelines = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", filelines) # The idiot who put his zipcode in the address field in "men10Mile_2007"
   
-  filelines = gsub("±", "t", filelines) # Roberto Pe±a to Peta in men10Mile_2008
+  #filelines = gsub("±", "t", filelines) # Roberto Pe±a to Peta in men10Mile_2008
   
-  filelines = gsub("[;+]", "", filelines) # Remove all ";" and "+" in order not to get confused with our added delimeter
-  filelines = gsub("X{2,}", "  ", filelines) # The xxxxx and xx in women10Mile_2002 replaced with NA
-  filelines = gsub("_", "-", filelines) # Replace the underscore in women10Mile_2010
+  #filelines = gsub("[;+]", "", filelines) # Remove all ";" and "+" in order not to get confused with our added delimeter
+  #filelines = gsub("X{2,}", "  ", filelines) # The xxxxx and xx in women10Mile_2002 replaced with NA
+  #filelines = gsub("_", "-", filelines) # Replace the underscore in women10Mile_2010
+  return(filelines)
 }
 
 # Function to get the range of lines to containing the tables
@@ -290,7 +279,7 @@ postProcTime <- function(s) {
 }
 
 # Function to analyze each file
-analyzeFile <- function(filename, path, fieldnames = NULL) {
+analyzeFile <- function(filename, path, pos = NULL) {
   if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
     return (NULL)
   }
@@ -298,44 +287,49 @@ analyzeFile <- function(filename, path, fieldnames = NULL) {
   year = str_extract(filename, "[:digit:]{4}$")
   fullname = paste(path, filename, sep="")
   conv2ASCII(fullname) # If file is UTF-8, convert to ASCII
-  filelines = trim(readLines(fullname))
-
+  #filelines = trim(readLines(fullname))
+  
+  filelines = readLines(fullname)
   filelines = cleanLines(filelines)
+  #filelines = cleanLines(filelines)
   #print(filelines[85])
-  if (is.null(fieldnames)) {
-    fieldnames = getFields(filelines)
+  if (is.null(pos)) {
+    pos = getFields(filelines)
+    print(pos)
   }
-  if (is.null(fieldnames)) {
+  if (is.null(pos)) {
     warning("Can not locate the field line. Try specifying the field names manually!")
     return(NULL)
   }
-  #print(fieldnames)
-  pr = getFieldPatterns(fieldnames)
   
-  be = getBeginEnd(filelines, pr[1]) # locate the first line to read
-  #print(be)
+  max_len_line = max(nchar(filelines))
+  fieldwidths = c(pos[-1], max_len_line) - pos
+  names(fieldwidths) = names(fieldnames)
+  print(fieldwidths)
+  
+  pr = getFieldPatterns(names(pos))
+  print(pr)
+  be = getBeginEnd(filelines, pr[1]) # locate the first and last line to read
+  
+  print(be)
   #print(pr)
   #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
-  filelines = stri_replace_all_regex(filelines, pr[1], pr[2]) # Add the delimeters
-  #data_part = filelines[be[1]:be[2]]
-  #x = stri_count(data_part, fixed=';')
-  #print(x[891])
-  #print(data_part[1])
-  tc <- textConnection(filelines[be[1]:be[2]])
-  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="", stringsAsFactors = FALSE)
 
-  #str_replace(filelines[86], pr[1], pr[2])
+  tc <- textConnection(filelines[be[1]:be[2]])
+  data <- read.fwf(tc, fieldwidths, header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = names(pos), comment.char="")#, stringsAsFactors = FALSE)
+
+  data = data[!is.na(data$place),]
   #return(list(c(gender, year)))
 }
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("women10Mile_2008")
+ file = c("women10Mile_2010")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
  fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun")
  data_raw = analyzeFile(file, path)
- data = postProcFrame(data_raw)
- #print(summary(data_raw))
- #print(data_raw[which(is.na(data_raw$age)),])
- #print(data_raw[which(is.na(data_raw$number)),])
+ #data = postProcFrame(data_raw)
+ print(summary(data_raw))
+ print(data_raw[which(is.na(data_raw$age)),])
+ print(data_raw[which(is.na(data_raw$number)),])
