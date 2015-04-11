@@ -190,6 +190,64 @@ conv2ASCII <- function(filename) {
   }
 }
 
+postProcFrame <- function(data_frame) {
+  # place column does not need to be postprocessed
+  
+  # Decompose the div/tot into two columns
+  if ("divtot" %in% colnames(data_frame)) {
+    data_frame$div <- sapply(data_frame$divtot, postProcDiv)
+    data_frame$tot <- sapply(data_frame$divtot, postProcTot)
+    data_frame$divtot <- NULL
+  } else {
+    data_frame$div <- NA
+    data_frame$tot <- NA
+  }
+
+  
+  # Convert the name into lower cases, remove
+  if ("name" %in% colnames(data_frame)) {
+    data_frame$name <- sapply(data_frame$name, postProcName)
+  }
+  else {
+    data_frame$name <- NA
+  }
+  
+  return(data_frame)
+}
+
+postProcDiv <- function(s) {
+  if (s == "") {
+    #print(s)
+    return (NA)
+  } else {
+    return (as.integer(str_extract(s, "^[[:digit:]]+\\b")))
+  }
+}
+
+postProcTot <- function(s) {
+  if (s == "") {
+    #print(s)
+    return (NA)
+  } else {
+    return (as.integer(str_extract(s, "\\b[[:digit:]]+$")))
+  }
+}
+
+postProcName <- function(s) {
+  return(tolower(s))
+}
+
+time2int <- function(v) {
+  if (length(v) == 0) {
+    return(NA)
+  } else if (length(v) == 1) {
+    return (v)
+  } else if ((length(v) == 2)) {
+    return (60*v[1] + v[2])
+  } else {
+    eturn (3600 * v[1] + 60*v[2] + v[3])
+  }
+}
 
 # Function to analyze each file
 analyzeFile <- function(filename, path) {
@@ -218,7 +276,7 @@ analyzeFile <- function(filename, path) {
   #print(x[891])
   #print(data_part[1])
   tc <- textConnection(filelines[be[1]:be[2]])
-  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="")
+  data <- read.table(tc, sep=";", header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = fieldnames, quote = "", comment.char="", stringsAsFactors = FALSE)
 
   #str_replace(filelines[86], pr[1], pr[2])
   #return(list(c(gender, year)))
@@ -226,10 +284,11 @@ analyzeFile <- function(filename, path) {
   
 #data_raw = sapply(files, analyzeFile, "./data/")
  path = "./data/"
- file = c("women10Mile_2010")
+ file = c("men10Mile_2001")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
  data_raw = analyzeFile(file, path)
- print(summary(data_raw))
- print(data_raw[which(is.na(data_raw$age)),])
- print(data_raw[which(is.na(data_raw$number)),])
+ data = postProcFrame(data_raw)
+ #print(summary(data_raw))
+ #print(data_raw[which(is.na(data_raw$age)),])
+ #print(data_raw[which(is.na(data_raw$number)),])
