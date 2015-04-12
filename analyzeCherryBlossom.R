@@ -415,7 +415,7 @@ wrapper <- function(func_frame, index, list_frame, ...) {
  # Number of participants
  num_runner_men = sapply(index[,1], wrapper, func_frame = nrow, list_frame = list_data)
  num_runner_women = sapply(index[,2], wrapper, func_frame = nrow, list_frame = list_data)
- num_runner = t(data.frame(num_runner_men, num_runner_women)
+ num_runner = t(data.frame(num_runner_men, num_runner_women))
  
  pdf("num_runner.pdf")
  par(mar = c(5.1, 4.1, 4.1, 7.1), xpd = TRUE)
@@ -424,6 +424,23 @@ wrapper <- function(func_frame, index, list_frame, ...) {
  xlab="Years"
  dev.off()
  
+ # The best and mean performance
+ getMinMeanTimenet <- function(data_frame) {
+  return(c(min(data_frame$time_net, na.rm = TRUE), mean(data_frame$time_net, na.rm = TRUE)))
+ }
+ time_net_men = t(sapply(index[,1], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
+ time_net_women = t(sapply(index[,2], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
+ time_net = data.frame(time_net_men, time_net_women)
+ colnames(time_net) = c("Men min.", "Men mean", "Women min.", "Women mean")
+ 
+ pdf("time_net.pdf")
+ plot (c(1999,2010),c(0,6000),type="n", xlab="Years",ylab="Net Time/s") # adds titles to the axes ), # sets the x and y axes scales 
+ lines(years, time_net[,1], col="blue", lwd=2.5, lty = 1)
+ lines(years, time_net[,2], col="blue", lwd=2.5, lty = 2)
+ lines(years, time_net[,3], col="red", lwd=2.5, lty = 1)
+ lines(years, time_net[,4], col="red", lwd=2.5, lty = 2)
+ legend(2006,1500, legend = colnames(time_net), lty=c(1,2,1,2), lwd=c(2.5,2.5,2.5,2.5),col=c("blue","blue","red","red"))
+ dev.off()
 
  #conv2ASCII(fullname)
  #data_raw = parseFile(file, path)#, pos)
