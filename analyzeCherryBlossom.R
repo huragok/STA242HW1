@@ -7,7 +7,9 @@ rm(list = ls())
 
 library(stringr)
 library(maps)
+library(maptools)
 library(ggplot2)
+library(sp)
 
 files <- list.files(path = "./data")
 n_files <- length(files)
@@ -41,10 +43,8 @@ getFields <- function(filelines) {
   
   # Locate the line containing the field names
   n_line = length(filelines)
-  #print(n_line)
   flag_field_line = FALSE
   for (i_line in seq(n_line)) {
-    #print(regexpr("PLACE|Place", filelines[i_line]) == 1)
     if (regexpr("PLACE|Place", filelines[i_line]) == 1) {
       flag_field_line = TRUE
       break
@@ -241,7 +241,6 @@ postProcFrame <- function(data_frame, filename = "", verbose = "FALSE") {
 
 postProcDiv <- function(s) {
   if (s == "") {
-    #print(s)
     return (NA)
   } else {
     return (as.integer(str_extract(s, "^[[:digit:]]+\\b")))
@@ -250,7 +249,6 @@ postProcDiv <- function(s) {
 
 postProcTot <- function(s) {
   if (s == "") {
-    #print(s)
     return (NA)
   } else {
     return (as.integer(str_extract(s, "\\b[[:digit:]]+$")))
@@ -279,7 +277,6 @@ postProcGL <- function(v_s) {
 }
 
 postProcTime <- function(s) {
-  #s = trim(s)
   if (is.na(s) | s == "") {
     return(NA)
   }
@@ -337,7 +334,6 @@ parseFile <- function(filename, path, pos = NULL, verbose = FALSE) {
   
   fullname = paste(path, filename, sep="")
   conv2ASCII(fullname) # If file is UTF-8, convert to ASCII
-  #filelines = trim(readLines(fullname))
   
   filelines = readLines(fullname)
   if(verbose) print(paste("--", toString(length(filelines)), "lines read in."))
@@ -365,28 +361,27 @@ parseFile <- function(filename, path, pos = NULL, verbose = FALSE) {
   if(verbose) print("-- Data successfully read into data frame.")
   
   data = data[!is.na(data$place),]
-  #return(list(c(gender, year)))
 }
 
 # The wrapper function to call a function on a data frame by specifing gender and year
 wrapper <- function(func_frame, index, list_frame, ...) {
-    return (func_frame(list_frame[[index]], ...))
+  return (func_frame(list_frame[[index]], ...))
 }
 
 # Parsing and post-processing
- path = "./data/"
- 
- fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun") # Manually set data for women10Mile_2001
- pos = c(1, 7, 13, 35, 38, 57, 65)
- names(pos) = fieldnames 
- 
- #file = c("women10Mile_2002")
- #fullname = paste(path, file, sep = "")
- #data_raw = parseFile(file, path)#, pos)
- #data = postProcFrame(data_raw, file)
- 
- list_data = list()
- for (file in files) {
+path = "./data/"
+
+fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun") # Manually set data for women10Mile_2001
+pos = c(1, 7, 13, 35, 38, 57, 65)
+names(pos) = fieldnames 
+
+#file = c("women10Mile_2002")
+#fullname = paste(path, file, sep = "")
+#data_raw = parseFile(file, path)#, pos)
+#data = postProcFrame(data_raw, file)
+
+list_data = list()
+for (file in files) {
   gender = str_extract(file, "^(men|women)")
   if (gender == "men") {
     gender = "M"
@@ -402,52 +397,61 @@ wrapper <- function(func_frame, index, list_frame, ...) {
   }
   list_data[[filename]] = postProcFrame(data_raw)
   print(paste(filename, "done"))
- }
+}
  
  
 # The variable derivation part
  
- years = seq(1999, 2010)
- index = cbind(paste("M", years), paste("F", years))
- colnames(index) = c("M", "F")
- rownames(index) = years
- 
- # Number of participants
- num_runner_men = sapply(index[,1], wrapper, func_frame = nrow, list_frame = list_data)
- num_runner_women = sapply(index[,2], wrapper, func_frame = nrow, list_frame = list_data)
- num_runner = t(data.frame(num_runner_men, num_runner_women))
- 
- pdf("num_runner.pdf")
- par(mar = c(5.1, 4.1, 4.1, 7.1), xpd = TRUE)
- barplot(num_runner, col = heat.colors(length(rownames(num_runner))), width = 2)
- legend("topright", inset = c(-0.25, 0), fill = heat.colors(length(rownames(num_runner))),legend = c("Women", "Men"))
- xlab="Years"
- dev.off()
- 
- # The best and mean performance
- getMinMeanTimenet <- function(data_frame) {
-  return(c(min(data_frame$time_net, na.rm = TRUE), mean(data_frame$time_net, na.rm = TRUE)))
- }
- time_net_men = t(sapply(index[,1], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
- time_net_women = t(sapply(index[,2], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
- time_net = data.frame(time_net_men, time_net_women)
- colnames(time_net) = c("Men min.", "Men mean", "Women min.", "Women mean")
- 
- pdf("time_net.pdf")
- plot (c(1999,2010),c(0,6000),type="n", xlab="Years",ylab="Net Time/s") # adds titles to the axes ), # sets the x and y axes scales 
- lines(years, time_net[,1], col="blue", lwd=2.5, lty = 1)
- lines(years, time_net[,2], col="blue", lwd=2.5, lty = 2)
- lines(years, time_net[,3], col="red", lwd=2.5, lty = 1)
- lines(years, time_net[,4], col="red", lwd=2.5, lty = 2)
- legend(2006,1500, legend = colnames(time_net), lty=c(1,2,1,2), lwd=c(2.5,2.5,2.5,2.5),col=c("blue","blue","red","red"))
- dev.off()
+years = seq(1999, 2010)
+index = cbind(paste("M", years), paste("F", years))
+colnames(index) = c("M", "F")
+rownames(index) = years
 
- #conv2ASCII(fullname)
- #data_raw = parseFile(file, path)#, pos)
- #data = postProcFrame(data_raw, file)
- #print(summary(data))
- #print(data_raw[which(is.na(data_raw$age)),])
- #print(data_raw[which(is.na(data_raw$number)),])
+# Number of participants
+num_runner_men = sapply(index[,1], wrapper, func_frame = nrow, list_frame = list_data)
+num_runner_women = sapply(index[,2], wrapper, func_frame = nrow, list_frame = list_data)
+num_runner = t(data.frame(num_runner_men, num_runner_women))
+
+pdf("num_runner.pdf")
+par(mar = c(5.1, 4.1, 4.1, 7.1), xpd = TRUE)
+barplot(num_runner, col = heat.colors(length(rownames(num_runner))), width = 2)
+legend("topright", inset = c(-0.25, 0), fill = heat.colors(length(rownames(num_runner))),legend = c("Women", "Men"))
+xlab="Years"
+dev.off()
  
- #year = seq(1999, 2010)
- #filenames = sapply()
+# The best and mean performance
+getMinMeanTimenet <- function(data_frame) {
+  return(c(min(data_frame$time_net, na.rm = TRUE), mean(data_frame$time_net, na.rm = TRUE)))
+}
+time_net_men = t(sapply(index[,1], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
+time_net_women = t(sapply(index[,2], wrapper, func_frame = getMinMeanTimenet, list_frame = list_data))
+time_net = data.frame(time_net_men, time_net_women)
+colnames(time_net) = c("Men min.", "Men mean", "Women min.", "Women mean")
+
+pdf("time_net.pdf")
+plot (c(1999,2010),c(0,6000),type="n", xlab="Years",ylab="Net Time/s") # adds titles to the axes ), # sets the x and y axes scales 
+lines(years, time_net[,1], col="blue", lwd=2.5, lty = 1)
+lines(years, time_net[,2], col="blue", lwd=2.5, lty = 2)
+lines(years, time_net[,3], col="red", lwd=2.5, lty = 1)
+lines(years, time_net[,4], col="red", lwd=2.5, lty = 2)
+legend(2006,1500, legend = colnames(time_net), lty=c(1,2,1,2), lwd=c(2.5,2.5,2.5,2.5),col=c("blue","blue","red","red"))
+dev.off()
+
+# The distribution of the US runners across different states in 2010
+state2010 = table(c(as.character(list_data[["M 2010"]]$hometown_state), as.character(list_data[["F 2010"]]$hometown_state)))
+state2010_frame = data.frame(as.vector(state2010), names(state2010))
+names(state2010_frame) = c('values', 'state.abb')
+state2010_frame$states <- tolower(state.name[match(state2010_frame$state.abb,  state.abb)])
+state2010_frame$states[which(state2010_frame$state.abb == "DC")] = "district of columbia"
+ 
+mapUSA <- map('state',  fill = TRUE,  plot = FALSE)
+nms <- sapply(strsplit(mapUSA$names,  ':'),  function(x)x[1])
+USApolygons <- map2SpatialPolygons(mapUSA,  IDs = nms,  CRS('+proj=longlat'))
+idx <- match(unique(nms),  state2010_frame$states)
+state2010_frame2 <- data.frame(value = state2010_frame$value[idx], state = unique(nms))
+row.names(state2010_frame2) <- unique(nms)
+USAsp <- SpatialPolygonsDataFrame(USApolygons,  data = state2010_frame2)
+
+pdf("heatmap_usa_2010.pdf")
+spplot(USAsp['value'])
+dev.off()
