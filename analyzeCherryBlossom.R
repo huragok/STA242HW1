@@ -6,31 +6,27 @@
 
 library(stringr)
 library(stringi)
+library(maps)
 
 files <- list.files(path = "./data")
 n_files <- length(files)
 
-# The patterns of all possible fields
-# All the possible fields
+# All possible field names and the patterns used to detect the field name line
 fields_all = c("place", "divtot", "name", "number", "age", "hometown", "time_gun", "time_net", "pace", "seed", "split", "time_five_mile", "pace_five_mile", "time_ten_km", "pace_ten_km")
 patterns_fieldname = c("place", "div[^:print:]*/tot", "name", "num", "ag", "hometown", "gun( tim)*", "net( tim)*|time", "pace", "s", "split", "5 mi(le)*", "pace", "10 km", "pace") # Fuck you! men10Mile_2009 has a weirdo unprintable character on line 7 col 9
 names(patterns_fieldname) = fields_all
 
+# Define the patterns of data in each field
 pattern_time = "((\\s{5,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
 pattern_split = "((\\s{0,8})|((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})))"
 pattern_pace = "((\\s{4,5})|(1?[[:digit:]]:[[:digit:]]{2}))"
 pattern_time_net = "(((([[:digit:]]:)?[[:digit:]]{2}:[[:digit:]]{2})[#\\*]?\\s?)|(\\s{0,7}[#\\*]?\\s?))"
 pattern_time_gun = pattern_time_net 
-#pattern_time_net = "(([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)"
-#pattern_time_gun = "((([[:digit:]]{1,2}:){1,2}[[:digit:]]{2}[#*]?)?)"
-
-#pattern_name = "(([[:alpha:] ]*[[:digit:]]?[[:alpha:]*[\\.,\\-'] ]?)*[[:alpha:][:digit:]]*)"
-pattern_name = "(([[:alpha:],'&\\.\\-]+\\s{1,2})*[[:alpha:],'&\\.\\-]*)" #Here we assume that the name field does not contain any number and two words are separated by 1 spaces
+pattern_name = "(([[:alnum:],'&\\.\\-]+\\s{1,2})*[[:alnum:],'&`\\.\\-]*)"
 
 patterns_field = c("([[:digit:]]+)", "(([[:digit:]]+/[[:digit:]]+)?)", pattern_name, "([[:digit:]]*)", "([[:digit:]]{0,2})", pattern_name, pattern_time_gun, pattern_time_net, pattern_pace, "([^#]?)", pattern_split, pattern_time, pattern_pace, pattern_time, pattern_pace)
-count_group = stri_count(patterns_field , fixed = "(")
 names(patterns_field) = fields_all
-names(count_group) = fields_all
+
 
 patterns_to_scan = patterns_fieldname[c(-9, -13, -15)] # The field name we are going to search for directly using regular expression, pace/pace for 5mile/pace for 10km will be determined by contexts
 
@@ -44,7 +40,7 @@ getFields <- function(filelines) {
   
   # Locate the line containing the field names
   n_line = length(filelines)
-  print(n_line)
+  #print(n_line)
   flag_field_line = FALSE
   for (i_line in seq(n_line)) {
     #print(regexpr("PLACE|Place", filelines[i_line]) == 1)
@@ -171,17 +167,15 @@ getBeginEnd <- function(filelines, pattern) {
 # Function to test the format of the file. If UTF-8 convert to ASCII
 conv2ASCII <- function(filename) {
   fmt = system(paste("file -b \"", filename, "\"", sep = "" ), intern=TRUE)
-  #print(fmt)
   if (str_detect(fmt, "UTF-8")) {
-    #x = paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "\"", sep = "")
-    #print(x)
     system(paste("iconv -t ASCII//TRANSLIT \"", filename, "\" > \"", filename, "_new\"", sep = ""))
     system(paste("mv -f \"", filename, "_new\" \"", filename, "\"", sep = ""))
   }
 }
 
-postProcFrame <- function(data_frame) {
+postProcFrame <- function(data_frame, filename = "") {
   # place column does not need to be postprocessed
+  print(paste(filename, "being post-processed..."))
   
   # Decompose the div/tot into two columns
   if ("divtot" %in% colnames(data_frame)) {
@@ -192,6 +186,9 @@ postProcFrame <- function(data_frame) {
     data_frame$div <- NA
     data_frame$tot <- NA
   }
+  data_frame$div = as.factor(data_frame$div)
+  data_frame$tot = as.factor(data_frame$tot)
+  print("-- Div/tot processed.")
 
   
   # Convert the name into lower cases, remove
@@ -201,23 +198,23 @@ postProcFrame <- function(data_frame) {
   else {
     data_frame$name <- NA
   }
+  data_frame$name = as.factor(data_frame$name)
+  print("-- Name processed.")
   
   # Extract the USATF OPEN guideline (OPEN) or Under USATF Age-Group (AG) guideline or no guideline (NONE)
-  #print(colnames(data_frame))
-  #print(head(data_frame$time_net))
   field_gl = data_frame$time_net
-  #print(head(field_gl))
   if ("time_gun" %in% colnames(data_frame)) {
     field_gl = cbind(field_gl, data_frame$time_gun)
   }
-  print(head(field_gl))
-  print(class(field_gl))
   if (is.vector(field_gl)) {
     data_frame$guideline <- sapply(field_gl, postProcGL)
   }
   else {
+    #print(which(is.na(field_gl[,2])))
     data_frame$guideline <- apply(field_gl, 1, postProcGL)
   }
+  data_frame$guideline = as.factor(data_frame$guideline)
+  print("-- USATF guideline indicators extracted.")
   
   # Convert the time domain into seconds
   for (fieldname in c("time_gun", "time_net", "pace", "split", "time_five_mile", "pace_five_mile", "time_ten_km", "pace_ten_km")) {
@@ -228,8 +225,38 @@ postProcFrame <- function(data_frame) {
       data_frame[,fieldname] <- NA
     }
   }
+  print("-- All time fields converted into numerical (seconds).")
   
-  # Fix an ambiguity during the RE parsing: in men 2008 for some one who has mile time and pace it must have 10 km time and pace 
+  # Convert the seed domain into logical
+  if ("seed" %in% colnames(data_frame)) {
+    data_frame$seed <- (!is.na(data_frame$seed) & str_detect(data_frame$seed, "[^\\s]{1}"))
+    #data_frame$seed <- (nchar(data_frame$seed) > 0)
+  } else {
+    data_frame$seed <- NA
+  }
+  data_frame$seed = as.factor(data_frame$seed)
+  print("-- Seed processed")
+  
+  # Process the hometown domain
+  data_frame$hometown = gsub("^[[:digit:]]+\\sBerlin.*$", "Germany", data_frame$hometown) # The idiot who put his zip on Berlin in the address field in "men10Mile_2005"
+ 
+  data_frame$hometown= gsub("Suite\\s[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", data_frame$hometown)
+  data_frame$hometown = gsub("#?\\s?[[:digit:]]+\\s([A-Z]{2})\\s", "\\1", data_frame$hometown)
+  data_frame$hometown = gsub("[aA][pP][tT]\\.?\\s.*([A-Z]{2})\\s", "\\1", data_frame$hometown)
+  
+  data_frame$hometown = gsub("[[:digit:]]+(\\s[[:alpha:]]+)*\\s[Ss][Tt](\\s[A-Z]{2}\\s)", "\\2", data_frame$hometown) # The idiots who put their street address in "men10Mile_2007"
+  data_frame$hometown = gsub("[[:alpha:]]+@[[:alpha:]]+\\s", "", data_frame$hometown) # The idiots who put their email address in the address field in "men10Mile_2007"
+  data_frame$hometown = gsub("(\\s[[:alpha:]]+)[[:digit:]]+\\s", "\\1 ", data_frame$hometown) # The idiot who put his zipcode in the address field in "men10Mile_2007"
+  print("-- Clean the hometown field initially.")
+  
+  mat_hometown = t(sapply(data_frame$hometown, postProcHometown))
+  
+  names(mat_hometown) = NULL
+  data_frame$hometown = as.factor(mat_hometown[,1])
+  data_frame$hometown_country = as.factor(mat_hometown[,2])
+  data_frame$hometown_state = as.factor(mat_hometown[,3])
+  data_frame$hometown_city = as.factor(mat_hometown[,4])
+  print("-- Hometown processed.")
   
   return(data_frame)
 }
@@ -253,10 +280,15 @@ postProcTot <- function(s) {
 }
 
 postProcName <- function(s) {
-  return(tolower(s))
+  s = tolower(s)
+  if (str_detect(s, "unknown|unnamed")) {
+    s = NA
+  }
+  return(s)
 }
 
 postProcGL <- function(v_s) {
+  v_s[is.na(v_s)] = ""
   if (any(str_detect(v_s, "#"))) {
     return("OPEN")
   }
@@ -269,7 +301,8 @@ postProcGL <- function(v_s) {
 }
 
 postProcTime <- function(s) {
-  if (s == "") {
+  #s = trim(s)
+  if (is.na(s) | s == "") {
     return(NA)
   }
   v_s = unlist(strsplit(s, ":"))
@@ -278,8 +311,47 @@ postProcTime <- function(s) {
   return (sum((60 ^ seq(l_v - 1, 0)) * v_s))
 }
 
-# Function to analyze each file
-analyzeFile <- function(filename, path, pos = NULL) {
+us_cities = gsub("\\s[A-Z]{2}", "", us.cities$name)
+postProcHometown <- function(s) {
+  if (is.na(s) | s == "") { # Empty hometown are considered as NA
+    return(c(NA, NA, NA, NA))
+  }
+  hometown_state = toupper(str_extract(s, "\\b[[:alpha:]]{2}$")) # determine state
+  if (is.na(hometown_state)) {
+    if (s %in% us_cities) { # In 2006 the retarded organizers forgot to add the state names. Look up a table to check whether the city is in US
+      hometown_state = NA
+      hometown_country = "US"
+      hometown_city = s
+    } else if (s == "Washington") {
+      hometown_state = "DC"
+      hometown_country = "US"
+      hometown_city ="Washington"
+    } else { # We assume we encountered a country
+      hometown_country = s
+      hometown_state = NA
+      hometown_city = NA
+    }
+  } else if (hometown_state %in% state.abb) {
+    hometown_country = "US"
+    hometown_city = trim(gsub("\\b[[:alpha:]]{2}$", "", s)) # We assume the pre hometown city
+    if (hometown_city == "") {
+      hometown_city = NA
+    }
+  } else if (hometown_state == "DC") {
+    hometown_country = "US"
+    hometown_city = "Washington"
+  } else { # Where are you from?
+    hometown_country = "NA"
+    hometown_state = NA
+    hometown_city = NA
+  }
+  
+  return(c(s, hometown_country, hometown_state, hometown_city))
+}
+
+# Function to analyze each file into a data frame
+parseFile <- function(filename, path, pos = NULL) {
+  print(paste(filename, "being parsed..."))
   if (!str_detect(filename, "^(men|women)10Mile_[[:digit:]]{4}$")) {
     return (NULL)
   }
@@ -290,46 +362,44 @@ analyzeFile <- function(filename, path, pos = NULL) {
   #filelines = trim(readLines(fullname))
   
   filelines = readLines(fullname)
+  print(paste("--", toString(length(filelines)), "lines read in."))
   filelines = cleanLines(filelines)
-  #filelines = cleanLines(filelines)
-  #print(filelines[85])
   if (is.null(pos)) {
     pos = getFields(filelines)
-    print(pos)
   }
   if (is.null(pos)) {
     warning("Can not locate the field line. Try specifying the field names manually!")
     return(NULL)
   }
+  print("-- Data fields and their positions are:")
+  print(pos)
   
   max_len_line = max(nchar(filelines))
   fieldwidths = c(pos[-1], max_len_line) - pos
   names(fieldwidths) = names(fieldnames)
-  print(fieldwidths)
   
   pr = getFieldPatterns(names(pos))
-  print(pr)
   be = getBeginEnd(filelines, pr[1]) # locate the first and last line to read
+  print(paste("-- Data section in this file are between line", toString(be)))
   
-  print(be)
-  #print(pr)
-  #filelines = stri_replace_all_regex(filelines[2791], pr[1], pr[2]) # Add the delimeters
-
   tc <- textConnection(filelines[be[1]:be[2]])
-  data <- read.fwf(tc, fieldwidths, header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = names(pos), comment.char="")#, stringsAsFactors = FALSE)
-
+  data <- read.fwf(tc, fieldwidths, header = FALSE, strip.white=TRUE, blank.lines.skip = TRUE, fill = TRUE, col.names = names(pos), comment.char="", stringsAsFactors = FALSE)
+  print("-- Data successfully read into data frame.")
+  
   data = data[!is.na(data$place),]
   #return(list(c(gender, year)))
 }
   
-#data_raw = sapply(files, analyzeFile, "./data/")
+#data_raw = sapply(files, parseFile, "./data/")
  path = "./data/"
  file = c("women10Mile_2010")
  fullname = paste(path, file, sep = "")
  #conv2ASCII(fullname)
  fieldnames = c("place", "number", "name", "age", "hometown", "time_net", "time_gun")
- data_raw = analyzeFile(file, path)
- #data = postProcFrame(data_raw)
- print(summary(data_raw))
- print(data_raw[which(is.na(data_raw$age)),])
- print(data_raw[which(is.na(data_raw$number)),])
+ pos = c(1, 7, 13, 35, 38, 57, 65)
+ names(pos) = fieldnames 
+ data_raw = parseFile(file, path)#, pos)
+ data = postProcFrame(data_raw, file)
+ print(summary(data))
+ #print(data_raw[which(is.na(data_raw$age)),])
+ #print(data_raw[which(is.na(data_raw$number)),])
