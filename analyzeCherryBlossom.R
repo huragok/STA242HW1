@@ -166,19 +166,18 @@ postProcFrame <- function(data_frame, filename = "", verbose = "FALSE") {
   if (verbose) print("-- Div/tot processed.")
 
   
-  # Convert the name into lower cases, remove
+  # Process the number domain
   if ("number" %in% colnames(data_frame)) {
     data_frame$number <- as.factor(as.integer(data_frame$number))
   } else {
     data_frame$number <- NA
   }
-  data_frame$name = as.factor(data_frame$name)
+
+  # Convert the name into lower cases, remove
+  data_frame$name = as.factor(sapply(data_frame$name, postProcName))
   if (verbose) print("-- Name processed.")
   
-  # Process the number domain
-  if ("name" %in% colnames(data_frame)) {
-  } else {
-  }
+  
   # Extract the USATF OPEN guideline (OPEN) or Under USATF Age-Group (AG) guideline or no guideline (NONE)
   field_gl = data_frame$time_net
   if ("time_gun" %in% colnames(data_frame)) {
@@ -415,7 +414,7 @@ num_runner = t(data.frame(num_runner_men, num_runner_women))
 pdf("num_runner.pdf")
 par(mar = c(5.1, 4.1, 4.1, 7.1), xpd = TRUE)
 barplot(num_runner, col = heat.colors(length(rownames(num_runner))), width = 2)
-legend("topright", inset = c(-0.25, 0), fill = heat.colors(length(rownames(num_runner))),legend = c("Women", "Men"))
+legend("topright", inset = c(-0.25, 0), fill = heat.colors(length(rownames(num_runner))),legend = c("Men", "Women"))
 xlab="Years"
 dev.off()
  
@@ -454,4 +453,63 @@ USAsp <- SpatialPolygonsDataFrame(USApolygons,  data = state2010_frame2)
 
 pdf("heatmap_usa_2010.pdf")
 spplot(USAsp['value'])
+dev.off()
+
+# The age distribution of the runners in 2010
+getGroupInfoByTot <- function(tot, group) {
+  count_age = tot
+  min_time_net = min(group[which(group[,2] == tot), 3], na.rm=TRUE)
+  mean_time_net = mean(group[which(group[,2] == tot), 3], na.rm=TRUE)
+  min_age = min(group[which(group[,2] == tot), 1], na.rm=TRUE)
+  max_age = max(group[which(group[,2] == tot), 1], na.rm=TRUE)  
+  return(list(count_age, min_time_net, mean_time_net, min_age, max_age))
+}
+
+getGroupInfo <- function(index, list_data) {
+  age = list_data[[index]]$age
+  tot = as.numeric(as.character(list_data[[index]]$tot))
+  time_net = list_data[[index]]$time_net
+  group = data.frame(age, tot, time_net)
+  tot_by_group = as.vector(table(tot))
+
+  group_info = sapply(tot_by_group, getGroupInfoByTot, group)
+  rownames(group_info) = c('tot', 'min_time_net', 'mean_time_net', 'min_age', 'max_age')
+  ord <- order(unlist(group_info[4,]))
+  group_info <- group_info[,ord]
+  return(group_info)
+}
+
+group_info_m2010= getGroupInfo('M 2010', list_data)
+group_info_f2010 = getGroupInfo('F 2010', list_data)
+
+
+getParRect <- function(groupInfo) {
+  xleft = unlist(groupInfo[4, ])
+  xright = unlist(groupInfo[5, ]) + 1
+  ybottom = 0
+  ytop = unlist(groupInfo[1, ]) / (xright - xleft + 1)
+  return(list(xleft, xright, ybottom, ytop))
+}
+
+color_group_m2010 = rainbow(ncol(group_info_m2010))
+par_rect_m2010 = getParRect(group_info_m2010)
+pdf("group_m2010.pdf")
+plot(c(0, 100), c(0, 500), type = 'n',  xlab="Age", ylab="Density w.r.t Age")
+rect(xleft = par_rect_m2010[[1]], ybottom = par_rect_m2010[[3]], xright = par_rect_m2010[[2]], ytop = par_rect_m2010[[4]], col = color_group_m2010)
+dev.off()
+
+color_group_f2010 = rainbow(ncol(group_info_f2010))
+par_rect_f2010 = gerParRect(group_info_f2010)
+pdf("group_f2010.pdf")
+plot(c(0, 100), c(0, 500), type = 'n',  xlab="Age", ylab="Density w.r.t Age")
+rect(xleft = par_rect_f2010[[1]], ybottom = par_rect_f2010[[3]], xright = par_rect_f2010[[2]], ytop = par_rect_f2010[[4]], col = color_group_f2010)
+dev.off()
+
+pdf("time_net_group_2010.pdf")
+plot(c(0, 100), c(0, 8000), type = 'n',  xlab="Age", ylab="Net Time/s")
+lines((unlist(group_info_m2010[4,]) + unlist(group_info_m2010[5,]) + 1) / 2, unlist(group_info_m2010[2,]), type="b",  col="blue", lwd=2.5, lty = 1, pch = 1, cex=1)
+lines((unlist(group_info_m2010[4,]) + unlist(group_info_m2010[5,]) + 1) / 2, unlist(group_info_m2010[3,]), type="b",  col="blue", lwd=2.5, lty = 3, pch = 1, cex=1)
+lines((unlist(group_info_f2010[4,]) + unlist(group_info_f2010[5,]) + 1) / 2, unlist(group_info_f2010[2,]), type="b",  col="red", lwd=2.5, lty = 1, pch = 1, cex=1)
+lines((unlist(group_info_f2010[4,]) + unlist(group_info_f2010[5,]) + 1) / 2, unlist(group_info_f2010[3,]), type="b",  col="red", lwd=2.5, lty = 3, pch = 1, cex=1)
+legend(60,1500, legend = colnames(time_net), lty=c(1,2,1,2), lwd=c(2.5,2.5,2.5,2.5),col=c("blue","blue","red","red"))
 dev.off()

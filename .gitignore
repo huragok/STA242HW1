@@ -4,3 +4,8 @@ tmp
 .project
 .texlipse
 .Rhistory
+.metadata/*
+*.project
+*.texlipse
+*.synctex.gz
+*.Rhistory
