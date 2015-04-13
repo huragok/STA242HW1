@@ -45,7 +45,7 @@
 %----------------------------------------------------------------------------------------
 
 \title{UC Davis STA 242 2015 Spring Assignment 1} % Title
-\author{Wenhao \textsc{Wu}} % Author name
+\author{Wenhao \textsc{Wu}, 9987583} % Author name
 \date{\today} % Date for the report
 
 \begin{document}
@@ -104,7 +104,7 @@ Blossom Run there are more male runners than female runners. However, the number
 of female runners have suppassed that of the male runners starting from 2005 and
 the gap have been increasing ever since.
 
-\begin{figure}[!h]
+\begin{figure}[h]
     \centering
     \includegraphics[width=2.5in]{figs/num_runner.pdf}
     \caption{The number of runners.}
@@ -121,7 +121,7 @@ is probably because that more and more non-pros are taking part in this run,
 considering the fast increasing number of participants shown in
 Fig.~\ref{fig:num_runner}.
 
-\begin{figure}[!h]
+\begin{figure}[h]
     \centering
     \includegraphics[width=2.5in]{figs/time_net.pdf}
     \caption{The average and minimum net time.}
@@ -136,7 +136,7 @@ Maryland, Virginia and Washington D.C. There are also quite a few runners from
 Pennsylvania and New York. This heatmap clearly shows that Cherry Blossom Run is
 a popular local event.
 
-\begin{figure}[!h]
+\begin{figure}[h]
     \centering
     \includegraphics[width=3in]{figs/heatmap_usa_2010.pdf}
     \caption{The distributions of the runners across US.}
@@ -151,21 +151,21 @@ corresponding group). We notice that the youngest runners are 11 years old
 and there is a senior runners at the age of 86 (holy!). The largest age group
 for both women and men are both the one from 25 to 29.
 
-\begin{figure}[!h]
+\begin{figure}[h]
     \centering
     \includegraphics[width=2.5in]{figs/group_m2010.pdf}
     \caption{Age distribution of male runners in 2010.}
     \label{fig:age_male}
 \end{figure}
 
-\begin{figure}[!h]
+\begin{figure}[h]
     \centering
     \includegraphics[width=2.5in]{figs/group_f2010.pdf}
     \caption{Age distribution of female runners in 2010.}
     \label{fig:age_female}
 \end{figure}
 
-Finally we relate the performance of the runners with their ages. In
+It is also interesting relate the performance of the runners with their ages. In
 Fig.~\ref{fig:time_group_age}, we plot the mean and minimum net time within each
 age group. Considering the minimum net time, we notice that the best
 performance is reached by runners from 20 to 24. Considering the mean net time,
@@ -179,6 +179,52 @@ and min net time for both men and women.
     \caption{Mean and minimum net time versus age group.}
     \label{fig:time_group_age}
 \end{figure}
+
+Finally, we try to found all records for one individual runner across different
+years based on one piece of record in one year. To do so, we adopt a very
+simple rule: we assume that the name and gender (no offense) of each individual
+do not change across years. Also we assume that by the time of Cherry Blossom
+Run, the age of each individual will increase by 1 each year. As an example, we
+consider Christopher Dean, who got 38 place in 2003.
+All 4 pieces of record matched to it are listed in Table~\ref{tab:match}. As we
+can see, this guy took part in this event from 2003 to 2006 in a row, achieved
+his best place in 2005. Also the number on Chris's shirt is different every
+year. This simple mapping scheme works well for some one with neat records
+across different files. However, it is limited in the aspect that
+\begin{itemize}
+    \item If the age field is NA this would not work. Perhaps we could also try
+    combining the hometown information.
+    \item Although we performed a few cleanning steps for the name field, it is
+    still possible that the same person have names that can not be perfectly
+    matched accross different files. This might happen when someone mis-spelled
+    his name, when there is an AKA in the middle of the name, when the first and
+    last name got reverted or when a female runner get married. This problem
+    might be alleviated with the approximated string match method from
+    package `stringdist` by allowing non-perfect match of
+    the name field.
+\end{itemize}
+
+\begin{table*}[!h]
+    \renewcommand{\arraystretch}{1.3}
+    \caption{All records of Christopher Dean found in different files.}
+    \label{tab:match}
+    \centering
+    \begin{tabular}{c|ccccccccc}
+        \hline
+        year & place & div/tot & number & age & hometown & time gun &
+        time net & pace & seed \\
+        \hline
+        2003 & 38 & 38/1999  & 2466 & 28 & Alexandria VA &
+        3316 & 3314 & NA & NA\\
+        2004 & 48 & 39/2242 & 7328 & 29 & Alexandria VA & 3378 & 3377 & NA & NA
+        \\
+        2005 & 33 & 32/2290 & NA & 30 & Alexandria VA & 3312 & 3312 & 332 & NA
+        \\
+        2006 & 120 & 91/2892 & 4652 & 31 & Alexandria & 3655 & 3652 & 366 &
+        FALSE \\
+        \hline
+    \end{tabular}
+\end{table*}
 %\pagebreak
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
