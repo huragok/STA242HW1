@@ -1,0 +1,54 @@
+1999
+PLACE, DIV /TOT, NAME, AG, HOMETOWN, TIME, PACE 
+
+2000
+PLACE, DIV /TOT, NUM, NAME, AG, HOMETOWN, GUN TIM, NET TIM
+
+2001
+PLACE, NUM, NAME, AG, HOMETOWN, NET, GUN
+
+2002
+Place, Num, Name, Ag, Hometown, Net, Gun 
+
+2003
+Place, Div /Tot, Num, Name, Ag, Hometown, Gun Tim,  Net Tim 
+
+2004
+Place, Div /Tot, Num, Name, Ag, Hometown, Net, Gun
+
+2005
+Place, Div /Tot, Name, Ag, Hometown, Net, Gun, Pace
+
+2006
+Place, Div/Tot, Num, Name, Ag, Hometown, Net Tim, Gun Tim, Pace, S 
+
+2007
+Place, Div  /Tot, Num, Name, Ag, Hometown, Time, Pace, S, Split
+
+2008
+Place, Div  /Tot, Num, Name, Ag, Hometown, 5 Mi, Pace, 10 Km, Pace, Time, Pace 
+
+2009
+Place, Div  /Tot, Num, Name, Ag, Hometown, Gun Tim, Net Tim, Pace  
+
+2010
+Place, Div  /Tot, Num, Name, Ag, Hometown, 5 Mile, Gun Tim, Net Tim, Pace
+
+Summary of all fields:
+place: PLACE, Place - the rank based on the net time
+div/total: DIV /TOT, Div /Tot, Div/Tot, Div  /Tot - age division place/number in division
+name: NAME, Name - just name
+number: NUM, Num - Bib number, can be used as an index
+age: AG, Ag - just age
+hometown: HOMETOWN, Hometown - country for non-us citizens, city and state for us citizens
+gun time: GUN TIM, GUN, Gun, Gun Tim
+net time: NET TIM, NET, Net, Net Tim, TIME, Time
+pace: PACE, Pace
+S: S - seeded runners
+split: Split - split time at a certain checkpoint?
+5 mile: 5 Mi, 5 Mile - 5 mile check point?
+pace for 5 mile: Pace - right after the 5 mile field
+10 km: 10 Km - 10 km check point?
+pace for 10 mile: Pace - right after the 10 km field
+
+
